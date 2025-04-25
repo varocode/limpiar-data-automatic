@@ -828,19 +828,289 @@ class ComentariosFrame(tk.LabelFrame):
 
             logger.info(f"Listas de columnas actualizadas en el generador de comentarios: {len(columns)} columnas")
 
+class FechasFrame(tk.Frame):
+    """Frame para formatear fechas de nacimiento"""
+    def __init__(self, parent):
+        super().__init__(parent)
+        # Obtener referencia al App principal
+        self.parent = self.winfo_toplevel()
+        self.create_widgets()
+
+    def create_widgets(self):
+        # Frame principal
+        main_frame = tk.Frame(self)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Frame para selección de columna
+        column_frame = tk.Frame(main_frame)
+        column_frame.pack(fill=tk.X, pady=10)
+
+        tk.Label(column_frame, text="Columna de fecha:", font=("Arial", 10, "bold")).pack(side=tk.LEFT, padx=5)
+        
+        # Crear el combobox con una lista vacía inicial
+        self.columnas_disponibles = []
+        self.fecha_combo = ttk.Combobox(column_frame, state="readonly", width=40, values=self.columnas_disponibles)
+        self.fecha_combo.pack(side=tk.LEFT, padx=5)
+
+        # Frame para previsualización
+        preview_frame = tk.LabelFrame(main_frame, text="Previsualización")
+        preview_frame.pack(fill=tk.BOTH, expand=True, pady=10)
+
+        # Tabla de previsualización
+        preview_table = tk.Frame(preview_frame)
+        preview_table.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # Cabeceras
+        tk.Label(preview_table, text="Formato Original", font=("Arial", 9, "bold"), width=30).grid(row=0, column=0, padx=5, pady=5)
+        tk.Label(preview_table, text="Nuevo Formato (dd/mm/yyyy)", font=("Arial", 9, "bold"), width=30).grid(row=0, column=1, padx=5, pady=5)
+
+        # Área de previsualización
+        self.preview_original = tk.Text(preview_table, height=10, width=30)
+        self.preview_original.grid(row=1, column=0, padx=5, pady=5)
+        self.preview_original.config(state=tk.DISABLED)
+
+        self.preview_nuevo = tk.Text(preview_table, height=10, width=30)
+        self.preview_nuevo.grid(row=1, column=1, padx=5, pady=5)
+        self.preview_nuevo.config(state=tk.DISABLED)
+
+        # Frame para botones
+        button_frame = tk.Frame(main_frame)
+        button_frame.pack(fill=tk.X, pady=10)
+
+        tk.Button(button_frame, text="Previsualizar", 
+                 command=self.previsualizar_formato,
+                 bg="#2196F3", fg="white").pack(side=tk.LEFT, padx=5)
+
+        tk.Button(button_frame, text="Aplicar Formato", 
+                 command=self.aplicar_formato,
+                 bg="#4CAF50", fg="white",
+                 font=("Arial", 10, "bold")).pack(side=tk.RIGHT, padx=5)
+
+    def update_column_list(self):
+        """Actualiza la lista de columnas disponibles"""
+        try:
+            if hasattr(self.parent, 'df') and self.parent.df is not None:
+                logger.info("\n=== ACTUALIZANDO COLUMNAS EN FORMATEADOR DE FECHAS ===")
+                
+                # Obtener la lista de columnas
+                self.columnas_disponibles = self.parent.df.columns.tolist()
+                
+                # Actualizar el combobox con las nuevas columnas
+                self.fecha_combo['values'] = self.columnas_disponibles
+                
+                # Limpiar la selección actual
+                self.fecha_combo.set('')
+                
+                # Logging detallado
+                logger.info(f"✓ Total de columnas disponibles: {len(self.columnas_disponibles)}")
+                if len(self.columnas_disponibles) > 0:
+                    logger.info("Ejemplos de columnas disponibles:")
+                    for i, col in enumerate(self.columnas_disponibles[:5], 1):
+                        logger.info(f"  {i}. {col}")
+                    
+                    # Intentar seleccionar automáticamente la columna de fecha si existe
+                    fecha_columns = [col for col in self.columnas_disponibles if 'FECHA' in col.upper()]
+                    if fecha_columns:
+                        self.fecha_combo.set(fecha_columns[0])
+                        logger.info(f"✓ Columna de fecha detectada y seleccionada: {fecha_columns[0]}")
+                
+                logger.info("✓ Actualización de columnas completada exitosamente")
+                logger.info("=" * 50)
+            else:
+                logger.warning("⚠ No se encontró DataFrame en la aplicación principal")
+                self.fecha_combo['values'] = []
+                self.fecha_combo.set('')
+        except Exception as e:
+            logger.error(f"Error al actualizar lista de columnas en formateador de fechas: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+
+    def previsualizar_formato(self):
+        """Muestra una previsualización del formato de fechas"""
+        columna = self.fecha_combo.get()
+        if not columna:
+            messagebox.showinfo("Información", "Por favor seleccione una columna de fecha")
+            return
+
+        try:
+            # Obtener muestra de fechas
+            fechas_originales = self.parent.df[columna].head(10)
+            fechas_nuevas = []
+
+            for fecha in fechas_originales:
+                try:
+                    # Intentar diferentes formatos de fecha
+                    if pd.isna(fecha):
+                        fechas_nuevas.append('')
+                        continue
+                        
+                    fecha_str = str(fecha).strip()
+                    
+                    # Si es un número (formato Excel)
+                    if fecha_str.isdigit() and len(fecha_str) == 8:
+                        fecha_dt = pd.to_datetime(fecha_str, format='%Y%m%d')
+                    else:
+                        # Intentar parsear la fecha
+                        fecha_dt = pd.to_datetime(fecha_str)
+                    
+                    # Formatear al formato deseado
+                    fecha_formateada = fecha_dt.strftime('%d/%m/%Y')
+                    fechas_nuevas.append(fecha_formateada)
+                    
+                except Exception as e:
+                    fechas_nuevas.append(f"Error: {str(fecha)}")
+                    logger.error(f"Error al formatear fecha '{fecha}': {str(e)}")
+
+            # Mostrar en previsualización
+            self.preview_original.config(state=tk.NORMAL)
+            self.preview_original.delete(1.0, tk.END)
+            self.preview_original.insert(tk.END, "\n".join(map(str, fechas_originales)))
+            self.preview_original.config(state=tk.DISABLED)
+
+            self.preview_nuevo.config(state=tk.NORMAL)
+            self.preview_nuevo.delete(1.0, tk.END)
+            self.preview_nuevo.insert(tk.END, "\n".join(map(str, fechas_nuevas)))
+            self.preview_nuevo.config(state=tk.DISABLED)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al previsualizar fechas: {str(e)}")
+            logger.error(f"Error al previsualizar fechas: {str(e)}")
+
+    def aplicar_formato(self):
+        """Aplica el formato de fecha a toda la columna"""
+        columna = self.fecha_combo.get()
+        if not columna:
+            messagebox.showinfo("Información", "Por favor seleccione una columna de fecha")
+            return
+
+        if not messagebox.askyesno("Confirmar", 
+                                 f"¿Está seguro de que desea formatear la columna {columna}?\n"
+                                 "Este proceso modificará todas las fechas al formato dd/mm/yyyy"):
+            return
+
+        try:
+            logger.info(f"\n{'='*50}")
+            logger.info("INICIANDO FORMATEO DE FECHAS")
+            logger.info(f"{'='*50}")
+            logger.info(f"Columna seleccionada: {columna}")
+            
+            # Crear copia de seguridad de la columna original
+            self.parent.df[f"{columna}_original"] = self.parent.df[columna].copy()
+            
+            # Procesar fechas
+            total_filas = len(self.parent.df)
+            errores = 0
+            fechas_procesadas = 0
+            
+            def formatear_fecha(fecha):
+                nonlocal errores, fechas_procesadas
+                try:
+                    if pd.isna(fecha):
+                        return fecha
+                        
+                    fecha_str = str(fecha).strip()
+                    
+                    # Si está vacío
+                    if not fecha_str:
+                        return fecha
+                        
+                    # Intentar diferentes formatos comunes
+                    try:
+                        # 1. Si es un número (YYYYMMDD)
+                        if fecha_str.isdigit() and len(fecha_str) == 8:
+                            fecha_dt = pd.to_datetime(fecha_str, format='%Y%m%d')
+                        
+                        # 2. Si tiene formato dd-mm-yyyy o dd/mm/yyyy o dd.mm.yyyy
+                        elif re.match(r'^\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4}$', fecha_str):
+                            # Reemplazar cualquier separador por /
+                            fecha_str = re.sub(r'[-\.]', '/', fecha_str)
+                            fecha_dt = pd.to_datetime(fecha_str, format='%d/%m/%Y')
+                        
+                        # 3. Si tiene formato yyyy-mm-dd o yyyy/mm/dd o yyyy.mm.dd
+                        elif re.match(r'^\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}$', fecha_str):
+                            # Reemplazar cualquier separador por -
+                            fecha_str = re.sub(r'[/\.]', '-', fecha_str)
+                            fecha_dt = pd.to_datetime(fecha_str, format='%Y-%m-%d')
+                        
+                        # 4. Si tiene formato mm-dd-yyyy o mm/dd/yyyy (formato americano)
+                        elif re.match(r'^\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4}$', fecha_str):
+                            # Reemplazar cualquier separador por /
+                            fecha_str = re.sub(r'[-\.]', '/', fecha_str)
+                            try:
+                                fecha_dt = pd.to_datetime(fecha_str, format='%m/%d/%Y')
+                            except:
+                                # Si falla, intentar como dd/mm/yyyy
+                                fecha_dt = pd.to_datetime(fecha_str, format='%d/%m/%Y')
+                        
+                        # 5. Si es un timestamp de Excel (número de días desde 1900)
+                        elif fecha_str.replace('.', '').isdigit():
+                            fecha_dt = pd.to_datetime(float(fecha_str), unit='D', origin='1899-12-30')
+                        
+                        # 6. Cualquier otro formato que pandas pueda interpretar
+                        else:
+                            fecha_dt = pd.to_datetime(fecha_str)
+                        
+                        fechas_procesadas += 1
+                        return fecha_dt.strftime('%d/%m/%Y')
+                        
+                    except Exception as e:
+                        logger.debug(f"Error al procesar fecha '{fecha_str}': {str(e)}")
+                        # Intentar una última vez con el parser más flexible de pandas
+                        try:
+                            fecha_dt = pd.to_datetime(fecha_str, dayfirst=True)
+                            fechas_procesadas += 1
+                            return fecha_dt.strftime('%d/%m/%Y')
+                        except:
+                            errores += 1
+                            return fecha
+                            
+                except Exception as e:
+                    errores += 1
+                    logger.error(f"Error al formatear fecha '{fecha}': {str(e)}")
+                    return fecha
+
+            # Aplicar formato
+            self.parent.df[columna] = self.parent.df[columna].apply(formatear_fecha)
+            
+            # Resumen
+            logger.info("\nRESUMEN DEL PROCESO:")
+            logger.info(f"✓ Total de filas procesadas: {total_filas}")
+            logger.info(f"✓ Fechas formateadas exitosamente: {fechas_procesadas}")
+            logger.info(f"✓ Errores encontrados: {errores}")
+            
+            if errores > 0:
+                logger.warning("\n⚠ Algunas fechas no pudieron ser formateadas.")
+                logger.info("Se ha creado una columna de respaldo con el nombre: " + f"{columna}_original")
+            
+            logger.info(f"\n{'='*50}")
+            
+            # Mostrar mensaje de éxito
+            messagebox.showinfo("Éxito", 
+                              f"Proceso completado.\nFechas formateadas: {fechas_procesadas}\n"
+                              f"Errores: {errores}")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Error al formatear fechas: {str(e)}")
+            logger.error(f"Error al formatear fechas: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Limpieza de Teléfonos y Generador de Comentarios")
         self.geometry("900x700")
+        self.inicializar_variables()
+        self.create_widgets()
+
+    def inicializar_variables(self):
+        """Inicializa o reinicia todas las variables de la aplicación"""
         self.df = None
         self.df_comentarios = None
-        self.df_limpio = None  # Para almacenar el resultado de la limpieza
-        self.columnas_limpias = []  # Para almacenar las columnas que se limpiaron
-        self.cedula_col = None  # Para almacenar la columna de cédula
+        self.df_limpio = None
+        self.columnas_limpias = []
+        self.cedula_col = None
         self.comentarios_generados = False
-
-        self.create_widgets()
 
     def create_widgets(self):
         # Crear notebook (pestañas)
@@ -851,19 +1121,41 @@ class App(tk.Tk):
         self.tab_limpieza = tk.Frame(self.notebook)
         self.notebook.add(self.tab_limpieza, text="Limpieza de Teléfonos")
 
-        # Pestaña 2: Generador de comentarios
+        # Pestaña 2: Formateo de fechas
+        self.tab_fechas = tk.Frame(self.notebook)
+        self.notebook.add(self.tab_fechas, text="Formateo de Fechas")
+
+        # Pestaña 3: Generador de comentarios
         self.tab_comentarios = tk.Frame(self.notebook)
         self.notebook.add(self.tab_comentarios, text="Generador de Comentarios")
 
         # Contenido de pestaña 1 (Limpieza)
         self.create_limpieza_widgets()
 
-        # Contenido de pestaña 2 (Comentarios) - Se creará después de cargar datos
+        # Contenido de pestaña 2 (Fechas)
+        self.fechas_frame = FechasFrame(self.tab_fechas)
+        self.fechas_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Área de log (común para ambas pestañas)
+        # Área de log (común para todas las pestañas)
         log_frame = tk.LabelFrame(self, text="Log")
         log_frame.pack(fill=tk.X, expand=False, padx=10, pady=10)
 
+        # Frame para botones de control
+        control_frame = tk.Frame(log_frame)
+        control_frame.pack(fill=tk.X, pady=5)
+
+        # Botón para limpiar GUI
+        self.btn_limpiar = tk.Button(
+            control_frame,
+            text="🔄 Limpiar/Nueva Base",
+            command=self.limpiar_gui,
+            bg="#FF9800",
+            fg="white",
+            font=("Arial", 10, "bold")
+        )
+        self.btn_limpiar.pack(side=tk.LEFT, padx=5)
+
+        # Área de texto para logs
         self.log_text = tk.Text(log_frame, height=10, width=80)
         self.log_text.pack(fill=tk.X, expand=True, padx=5, pady=5)
 
@@ -933,25 +1225,60 @@ class App(tk.Tk):
             return
 
         try:
-            logger.info(f"Cargando archivo: {filename}")
-            self.df = pd.read_excel(filename)
+            logger.info(f"\n=== CARGANDO ARCHIVO ===")
+            logger.info(f"Archivo: {filename}")
+            
+            # Leer todas las columnas como texto para evitar conversión automática de números
+            self.df = pd.read_excel(filename, dtype=str)
+            
+            # Limpiar espacios en blanco al inicio y final de todas las columnas
+            for col in self.df.columns:
+                self.df[col] = self.df[col].str.strip()
+
+            columnas = self.df.columns.tolist()
+            logger.info(f"✓ Archivo cargado exitosamente")
+            logger.info(f"✓ Total de columnas: {len(columnas)}")
 
             # Actualizar lista de columnas disponibles en la pestaña de limpieza
-            self.available_cols.populate(self.df.columns.tolist())
+            logger.info("\n=== ACTUALIZANDO PESTAÑAS ===")
+            logger.info("1. Pestaña de Limpieza de Teléfonos...")
+            self.available_cols.populate(columnas)
             self.cedula_selector.populate([])
             self.tel_selector.populate([])
+            logger.info("✓ Columnas actualizadas en limpieza de teléfonos")
+
+            # Actualizar lista de columnas en la pestaña de fechas
+            logger.info("\n2. Pestaña de Formateo de Fechas...")
+            try:
+                if hasattr(self, 'fechas_frame'):
+                    self.fechas_frame.update_column_list()
+                    logger.info("✓ Columnas actualizadas en formateador de fechas")
+                else:
+                    logger.error("⚠ No se encontró el frame de fechas")
+            except Exception as e:
+                logger.error(f"Error al actualizar columnas en fechas: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
 
             # Crear/actualizar el frame de comentarios
+            logger.info("\n3. Pestaña de Comentarios...")
             self.create_comentarios_widgets()
 
-            # Actualizar las listas de columnas en el frame de comentarios si ya existe
+            # Actualizar las listas de columnas en el frame de comentarios
             if hasattr(self, 'comentarios_frame') and self.comentarios_frame is not None:
                 try:
                     self.comentarios_frame.update_column_lists()
+                    logger.info("✓ Columnas actualizadas en generador de comentarios")
                 except Exception as e:
-                    logger.error(f"Error al actualizar columnas en comentarios: {str(e)}")
+                    logger.error(f"⚠ Error al actualizar columnas en comentarios: {str(e)}")
 
-            logger.info(f"Archivo cargado correctamente. Columnas: {len(self.df.columns)}")
+            logger.info(f"\n=== RESUMEN DE COLUMNAS CARGADAS ===")
+            logger.info(f"Total de columnas: {len(columnas)}")
+            logger.info("Columnas disponibles:")
+            for i, col in enumerate(columnas, 1):
+                logger.info(f"  {i}. {col}")
+            logger.info("=" * 50)
+
         except Exception as e:
             logger.error(f"Error al cargar archivo: {str(e)}")
             messagebox.showerror("Error", f"Error al cargar archivo: {str(e)}")
@@ -1065,24 +1392,41 @@ class App(tk.Tk):
 
     def procesar_limpieza(self, cedula_col, tel_cols, output_file):
         """Ejecuta el proceso de limpieza con las columnas seleccionadas"""
-        logger.info("Iniciando proceso de limpieza...")
+        logger.info("\n" + "="*50)
+        logger.info("INICIANDO PROCESO DE LIMPIEZA DE TELÉFONOS")
+        logger.info("="*50)
+        logger.info(f"Columna de cédula: {cedula_col}")
+        logger.info(f"Columnas de teléfono a procesar: {', '.join(tel_cols)}")
+        logger.info(f"Total de registros a procesar: {len(self.df)}")
+        logger.info("="*50 + "\n")
 
         # Crear copia del DataFrame original con solo las columnas seleccionadas
         df_trabajo = self.df[[cedula_col] + tel_cols].copy()
 
+        # Estadísticas iniciales
+        total_telefonos_inicial = sum(df_trabajo[col].notna().sum() for col in tel_cols)
+        logger.info(f"Total de teléfonos antes de la limpieza: {total_telefonos_inicial}")
+        for col in tel_cols:
+            total_col = df_trabajo[col].notna().sum()
+            logger.info(f"  - {col}: {total_col} números")
+        logger.info("\n" + "-"*50)
+
         # ===========================
-        # 1. NORMALIZAR TELÉFONOS (ELIMINAR 1 INICIAL)
+        # 1. NORMALIZAR TELÉFONOS
         # ===========================
-        logger.info("Normalizando números de teléfono (eliminando 1 inicial)...")
+        logger.info("\n🔍 FASE 1: NORMALIZACIÓN DE TELÉFONOS")
+        logger.info("-"*30)
 
         telefonos_normalizados = 0
+        telefonos_longitud_incorrecta = 0
 
         def normalizar_telefono(valor):
-            if not es_valor_valido(valor):
+            if pd.isna(valor):
                 return np.nan
 
             # Convertir a string y eliminar espacios
             telefono = str(valor).strip()
+            original = telefono
 
             # Eliminar todos los caracteres no numéricos
             solo_numeros = re.sub(r'\D', '', telefono)
@@ -1091,20 +1435,49 @@ class App(tk.Tk):
             if solo_numeros.startswith('1') and len(solo_numeros) > 1:
                 nonlocal telefonos_normalizados
                 telefonos_normalizados += 1
-                return solo_numeros[1:]
+                solo_numeros = solo_numeros[1:]
+                logger.debug(f"Número normalizado: {original} -> {solo_numeros}")
+
+            # Verificar longitud
+            if len(solo_numeros) != 10:
+                nonlocal telefonos_longitud_incorrecta
+                telefonos_longitud_incorrecta += 1
+                logger.debug(f"Longitud incorrecta: {solo_numeros} ({len(solo_numeros)} dígitos)")
+                return np.nan
 
             return solo_numeros
 
         # Aplicar normalización a todas las columnas de teléfono
         for col in tel_cols:
+            logger.info(f"\nProcesando columna: {col}")
+            total_antes = df_trabajo[col].notna().sum()
+            
+            # Mostrar ejemplos antes
+            ejemplos_antes = df_trabajo[col].head()
+            logger.info("Ejemplos antes de normalizar:")
+            for i, ejemplo in enumerate(ejemplos_antes, 1):
+                logger.info(f"  {i}: {ejemplo}")
+
             df_trabajo[col] = df_trabajo[col].apply(normalizar_telefono)
+            
+            total_despues = df_trabajo[col].notna().sum()
+            diferencia = total_antes - total_despues
+            
+            logger.info(f"Resultados para {col}:")
+            logger.info(f"  - Números antes: {total_antes}")
+            logger.info(f"  - Números después: {total_despues}")
+            logger.info(f"  - Eliminados: {diferencia}")
 
-        logger.info(f"Se normalizaron {telefonos_normalizados} números de teléfono (se eliminó el 1 inicial)")
+        logger.info("\nResumen de normalización:")
+        logger.info(f"✓ Números con 1 inicial eliminado: {telefonos_normalizados}")
+        logger.info(f"✓ Números con longitud incorrecta: {telefonos_longitud_incorrecta}")
+        logger.info("-"*50)
 
         # ===========================
-        # 2. ELIMINAR TELÉFONOS DUPLICADOS GLOBALES
+        # 2. ELIMINAR DUPLICADOS
         # ===========================
-        logger.info("Eliminando valores duplicados globalmente...")
+        logger.info("\n🔍 FASE 2: ELIMINACIÓN DE DUPLICADOS")
+        logger.info("-"*30)
 
         # Recolectar todos los valores en un solo Series
         valores_tel = []
@@ -1118,10 +1491,12 @@ class App(tk.Tk):
         total_antes = len(valores_tel)
         unicos = valores_tel_series.drop_duplicates().tolist()
         total_unicos = len(unicos)
+        duplicados_eliminados = total_antes - total_unicos
 
-        logger.info(f"Valores totales: {total_antes}")
-        logger.info(f"Valores únicos: {total_unicos}")
-        logger.info(f"Duplicados eliminados: {total_antes - total_unicos}")
+        logger.info("Estadísticas de duplicados:")
+        logger.info(f"✓ Total números encontrados: {total_antes}")
+        logger.info(f"✓ Números únicos: {total_unicos}")
+        logger.info(f"✓ Duplicados eliminados: {duplicados_eliminados}")
 
         # Conjunto para búsquedas rápidas
         set_unicos = set(unicos)
@@ -1141,58 +1516,83 @@ class App(tk.Tk):
 
         # Aplicar limpieza a todas las columnas de teléfono
         for col in tel_cols:
+            total_antes = df_trabajo[col].notna().sum()
             df_trabajo[col] = df_trabajo[col].apply(limpiar_duplicados)
+            total_despues = df_trabajo[col].notna().sum()
+            logger.info(f"\nColumna {col}:")
+            logger.info(f"  - Números antes: {total_antes}")
+            logger.info(f"  - Números después: {total_despues}")
+            logger.info(f"  - Eliminados: {total_antes - total_despues}")
+
+        logger.info("-"*50)
 
         # ===========================
-        # 3. VALIDAR NÚMEROS DE TELÉFONO (DOMINICANOS)
+        # 3. VALIDAR NÚMEROS
         # ===========================
-        logger.info("Validando números de teléfono dominicanos...")
+        logger.info("\n🔍 FASE 3: VALIDACIÓN DE NÚMEROS DOMINICANOS")
+        logger.info("-"*30)
 
         prefijos_validos = ['809', '829', '849']
         telefonos_invalidos = 0
+        telefonos_por_prefijo = {prefijo: 0 for prefijo in prefijos_validos}
 
         def validar_telefono(valor):
+            nonlocal telefonos_invalidos
+            
             if pd.isna(valor):
                 return np.nan
-
-            # Convertir a string y eliminar espacios
-            telefono = str(valor).strip()
-
-            # Validar longitud y prefijo
-            if len(telefono) == 10 and telefono[:3] in prefijos_validos:
+                
+            telefono = str(valor)
+            
+            # Verificar prefijo
+            prefijo = telefono[:3]
+            if prefijo in prefijos_validos:
+                telefonos_por_prefijo[prefijo] += 1
                 return telefono
             else:
-                nonlocal telefonos_invalidos
                 telefonos_invalidos += 1
+                logger.debug(f"Prefijo inválido: {prefijo} en {telefono}")
                 return np.nan
 
-        # Aplicar validación a todas las columnas de teléfono
+        # Aplicar validación
         for col in tel_cols:
+            logger.info(f"\nValidando columna: {col}")
+            total_antes = df_trabajo[col].notna().sum()
+            
+            # Ejemplos antes
+            ejemplos_antes = df_trabajo[col].head()
+            logger.info("Ejemplos antes de validar:")
+            for i, ejemplo in enumerate(ejemplos_antes, 1):
+                logger.info(f"  {i}: {ejemplo}")
+
             df_trabajo[col] = df_trabajo[col].apply(validar_telefono)
+            
+            total_despues = df_trabajo[col].notna().sum()
+            logger.info(f"\nResultados para {col}:")
+            logger.info(f"  - Números antes: {total_antes}")
+            logger.info(f"  - Números válidos: {total_despues}")
+            logger.info(f"  - Invalidados: {total_antes - total_despues}")
 
-        logger.info(f"Se encontraron y eliminaron {telefonos_invalidos} números de teléfono inválidos")
+        logger.info("\nDistribución por prefijo:")
+        for prefijo, cantidad in telefonos_por_prefijo.items():
+            logger.info(f"  - {prefijo}: {cantidad} números")
+        logger.info(f"Total números inválidos: {telefonos_invalidos}")
+        logger.info("-"*50)
 
         # ===========================
-        # 4. RELLENO DE CELDAS VACÍAS CON VALOR MÁS PRÓXIMO A LA DERECHA
+        # 4. RELLENO DE CELDAS
         # ===========================
-        logger.info("Rellenando celdas vacías con valores vecinos a la derecha...")
+        logger.info("\n🔍 FASE 4: RELLENO DE CELDAS VACÍAS")
+        logger.info("-"*30)
 
-        # Definir función de relleno
         def rellenar_fila(fila):
-            # Convertimos a lista para manipulación
             fila = list(fila)
-
-            # Variable para contar celdas rellenadas en esta fila
             celdas_rellenadas_fila = 0
 
-            # Saltamos la primera columna (cédula)
             for i in range(1, len(fila)):
-                # Si la celda está vacía
                 if pd.isna(fila[i]) or str(fila[i]).strip() == "":
-                    # Buscamos el próximo valor no vacío a la derecha
                     for j in range(i+1, len(fila)):
                         if es_valor_valido(fila[j]):
-                            # Movemos el valor
                             fila[i] = fila[j]
                             fila[j] = np.nan
                             celdas_rellenadas_fila += 1
@@ -1200,26 +1600,107 @@ class App(tk.Tk):
 
             return fila, celdas_rellenadas_fila
 
-        # Inicializar contador total
-        total_celdas_rellenadas = 0
-
-        # Aplicar función de relleno a cada fila y mantener conteo
+        # Aplicar relleno
         resultados = df_trabajo.apply(rellenar_fila, axis=1)
-        df_rellenado = pd.DataFrame([r[0] for r in resultados], columns=df_trabajo.columns)
+        df_trabajo = pd.DataFrame([r[0] for r in resultados], columns=df_trabajo.columns)
         total_celdas_rellenadas = sum(r[1] for r in resultados)
 
-        # Reemplazar el DataFrame de trabajo
-        df_trabajo = df_rellenado
-        logger.info(f"Se rellenaron {total_celdas_rellenadas} celdas vacías")
+        logger.info(f"Total de celdas rellenadas: {total_celdas_rellenadas}")
+        
+        # Mostrar distribución final por columna
+        logger.info("\nDistribución final de números:")
+        for col in tel_cols:
+            total = df_trabajo[col].notna().sum()
+            logger.info(f"  - {col}: {total} números")
 
         # ===========================
-        # 5. GUARDAR RESULTADO FINAL
+        # RESUMEN FINAL
         # ===========================
-        logger.info(f"Guardando archivo limpio como: {output_file}")
+        logger.info("\n" + "="*50)
+        logger.info("RESUMEN FINAL DEL PROCESO")
+        logger.info("="*50)
+        
+        total_telefonos_final = sum(df_trabajo[col].notna().sum() for col in tel_cols)
+        
+        logger.info(f"\nEstadísticas globales:")
+        logger.info(f"✓ Total registros procesados: {len(df_trabajo)}")
+        logger.info(f"✓ Teléfonos al inicio: {total_telefonos_inicial}")
+        logger.info(f"✓ Teléfonos al final: {total_telefonos_final}")
+        logger.info(f"✓ Diferencia: {total_telefonos_inicial - total_telefonos_final}")
+        
+        logger.info(f"\nDetalles del proceso:")
+        logger.info(f"✓ Números normalizados (1 inicial eliminado): {telefonos_normalizados}")
+        logger.info(f"✓ Números con longitud incorrecta: {telefonos_longitud_incorrecta}")
+        logger.info(f"✓ Duplicados eliminados: {duplicados_eliminados}")
+        logger.info(f"✓ Números con prefijo inválido: {telefonos_invalidos}")
+        logger.info(f"✓ Celdas rellenadas: {total_celdas_rellenadas}")
+        
+        logger.info(f"\nDistribución final por prefijo:")
+        for prefijo, cantidad in telefonos_por_prefijo.items():
+            logger.info(f"  - {prefijo}: {cantidad} números ({(cantidad/total_telefonos_final*100):.1f}%)")
+        
+        logger.info("\nDistribución final por columna:")
+        for col in tel_cols:
+            total = df_trabajo[col].notna().sum()
+            porcentaje = (total/len(df_trabajo)*100)
+            logger.info(f"  - {col}: {total} números ({porcentaje:.1f}% de registros)")
+
+        # Guardar resultado
+        logger.info("\nGuardando resultado...")
         df_trabajo.to_excel(output_file, index=False)
-        logger.info("✅ Proceso completado exitosamente")
+        logger.info(f"✅ Archivo guardado como: {output_file}")
+        logger.info("="*50)
 
         return df_trabajo
+
+    def limpiar_gui(self):
+        """Limpia la GUI y reinicia todas las variables para trabajar con una nueva base"""
+        if messagebox.askyesno("Confirmar", "¿Estás seguro de que deseas limpiar todo y preparar para una nueva base de datos?"):
+            try:
+                logger.info("\n" + "="*50)
+                logger.info("LIMPIANDO APLICACIÓN")
+                logger.info("="*50)
+                
+                # Reiniciar variables
+                self.inicializar_variables()
+                
+                # Limpiar entrada de archivo
+                self.file_entry.delete(0, tk.END)
+                
+                # Limpiar selectores de teléfonos
+                self.available_cols.populate([])
+                self.cedula_selector.populate([])
+                self.tel_selector.populate([])
+                
+                # Limpiar selector de fechas
+                self.fechas_frame.fecha_combo.set('')
+                self.fechas_frame.preview_original.config(state=tk.NORMAL)
+                self.fechas_frame.preview_original.delete(1.0, tk.END)
+                self.fechas_frame.preview_original.config(state=tk.DISABLED)
+                self.fechas_frame.preview_nuevo.config(state=tk.NORMAL)
+                self.fechas_frame.preview_nuevo.delete(1.0, tk.END)
+                self.fechas_frame.preview_nuevo.config(state=tk.DISABLED)
+                
+                # Limpiar pestaña de comentarios
+                for widget in self.tab_comentarios.winfo_children():
+                    widget.destroy()
+                
+                # Limpiar log
+                self.log_text.configure(state='normal')
+                self.log_text.delete(1.0, tk.END)
+                self.log_text.configure(state='disabled')
+                
+                logger.info("✅ GUI limpiada exitosamente")
+                logger.info("✅ Lista para cargar nueva base de datos")
+                logger.info("="*50)
+                
+                messagebox.showinfo("Éxito", "Aplicación lista para trabajar con una nueva base de datos")
+                
+            except Exception as e:
+                logger.error(f"Error al limpiar la GUI: {str(e)}")
+                messagebox.showerror("Error", f"Error al limpiar la aplicación: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
 
 # Funciones auxiliares
 def es_valor_valido(valor):
@@ -1359,3 +1840,4 @@ def realizar_fusion(app):
 if __name__ == "__main__":
     app = App()
     app.mainloop()
+
