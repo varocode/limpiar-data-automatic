@@ -1035,7 +1035,7 @@ class FechasFrame(tk.Frame):
                                     mes = int(partes[1])
                                     dia = int(partes[2])
                                 else:
-                                    # Formato dd/mm/yyyy o d/m/yyyy
+                                    # Formato dd/mm/yyyy o d/m/yyyy9o
                                     dia = int(partes[0])
                                     mes = int(partes[1])
                                     anio = int(partes[2])
