@@ -199,6 +199,7 @@ class ComentariosFrame(tk.LabelFrame):
         self.df = df
         self.parent = parent
         self.reemplazos_columnas = {}  # Diccionario para almacenar reemplazos por columna
+        self.app = self.winfo_toplevel()  # Obtener referencia a la ventana principal (App)
 
         self.create_widgets()
 
@@ -208,35 +209,43 @@ class ComentariosFrame(tk.LabelFrame):
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # Crear canvas con scroll
-        canvas = tk.Canvas(main_frame)
-        scrollbar = tk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas)
+        self.canvas = tk.Canvas(main_frame)
+        scrollbar = tk.Scrollbar(main_frame, orient="vertical", command=self.canvas.yview)
+        self.scrollable_frame = tk.Frame(self.canvas)
 
-        scrollable_frame.bind(
+        self.scrollable_frame.bind(
             "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         )
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=scrollbar.set)
 
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Configurar eventos de rueda de ratón para permitir scroll en cualquier área
+        self.canvas.bind("<MouseWheel>", self._on_mousewheel)
+        self.canvas.bind("<Button-4>", self._on_mousewheel)
+        self.canvas.bind("<Button-5>", self._on_mousewheel)
+        self.scrollable_frame.bind("<MouseWheel>", self._on_mousewheel)
+        self.scrollable_frame.bind("<Button-4>", self._on_mousewheel)
+        self.scrollable_frame.bind("<Button-5>", self._on_mousewheel)
 
         # Sección de selección de columnas
         self.sections = []
 
         # 1. Tipo de producto
-        self.add_section(scrollable_frame, "Tipo de producto", False)
+        self.add_section(self.scrollable_frame, "Tipo de producto", False)
 
         # 2. Límite pesos
-        section_pesos = self.add_section(scrollable_frame, "Límite pesos", True, "RD$")
+        section_pesos = self.add_section(self.scrollable_frame, "Límite pesos", True, "RD$")
 
         # 3. Límite dólares
-        section_dolares = self.add_section(scrollable_frame, "Límite dólares", True, "US$")
+        section_dolares = self.add_section(self.scrollable_frame, "Límite dólares", True, "US$")
 
         # 4. Límite crédito diferido
-        section_diferido = self.add_section(scrollable_frame, "Límite crédito diferido", True, "RD$")
+        section_diferido = self.add_section(self.scrollable_frame, "Límite crédito diferido", True, "RD$")
 
         # Opción para reemplazar 0 por 1 en límite diferido
         zero_frame = tk.Frame(section_diferido)
@@ -248,10 +257,10 @@ class ComentariosFrame(tk.LabelFrame):
 
         # 5-11. Otros 1-7
         for i in range(1, 8):
-            self.add_section(scrollable_frame, f"Otros {i}", False)
+            self.add_section(self.scrollable_frame, f"Otros {i}", False)
 
         # Sección de reemplazo de palabras
-        replace_frame = tk.LabelFrame(scrollable_frame, text="Reemplazo de palabras")
+        replace_frame = tk.LabelFrame(self.scrollable_frame, text="Reemplazo de palabras")
         replace_frame.pack(fill=tk.X, pady=10, padx=5)
 
         replace_top = tk.Frame(replace_frame)
@@ -275,7 +284,7 @@ class ComentariosFrame(tk.LabelFrame):
         self.btn_reemplazar.pack(side=tk.LEFT, padx=5)
 
         # Sección para ordenar columnas
-        order_frame = tk.LabelFrame(scrollable_frame, text="Orden de concatenación")
+        order_frame = tk.LabelFrame(self.scrollable_frame, text="Orden de concatenación")
         order_frame.pack(fill=tk.X, pady=10, padx=5)
 
         # Lista de columnas seleccionadas
@@ -293,17 +302,17 @@ class ComentariosFrame(tk.LabelFrame):
         tk.Button(btn_frame, text="↓", command=self.move_down).pack(fill=tk.X, pady=2)
 
         # Botón para previsualizar
-        preview_frame = tk.Frame(scrollable_frame)
+        preview_frame = tk.Frame(self.scrollable_frame)
         preview_frame.pack(fill=tk.X, pady=5)
 
         tk.Button(preview_frame, text="Previsualizar Comentarios",
                 command=self.previsualizar_comentarios, bg="#2196F3", fg="white").pack(pady=5)
 
         # Separador
-        ttk.Separator(scrollable_frame, orient='horizontal').pack(fill=tk.X, pady=10)
+        ttk.Separator(self.scrollable_frame, orient='horizontal').pack(fill=tk.X, pady=10)
 
         # Frame para previsualización
-        self.preview_frame = tk.LabelFrame(scrollable_frame, text="Previsualización de Comentarios")
+        self.preview_frame = tk.LabelFrame(self.scrollable_frame, text="Previsualización de Comentarios")
         self.preview_frame.pack(fill=tk.BOTH, expand=True, pady=5, padx=5)
 
         # Área de texto para previsualización
@@ -312,7 +321,7 @@ class ComentariosFrame(tk.LabelFrame):
         self.preview_text.config(state=tk.DISABLED)
 
         # Botón para generar columna
-        generate_frame = tk.Frame(scrollable_frame)
+        generate_frame = tk.Frame(self.scrollable_frame)
         generate_frame.pack(fill=tk.X, pady=10)
 
         tk.Button(generate_frame, text="Generar Columna COMENTARIOS",
@@ -321,6 +330,28 @@ class ComentariosFrame(tk.LabelFrame):
 
         # Actualizar lista de columnas disponibles
         self.update_column_lists()
+        
+        # Agregar eventos de scroll a los widgets dentro del scrollable_frame
+        self._bind_scroll_to_children(self.scrollable_frame)
+
+    def _bind_scroll_to_children(self, widget):
+        """Añade eventos de scroll a todos los widgets hijos recursivamente"""
+        for child in widget.winfo_children():
+            child.bind("<MouseWheel>", self._on_mousewheel)
+            child.bind("<Button-4>", self._on_mousewheel)
+            child.bind("<Button-5>", self._on_mousewheel)
+            self._bind_scroll_to_children(child)
+
+    def _on_mousewheel(self, event):
+        """Maneja el evento de rueda de ratón para desplazarse"""
+        # Para Windows/macOS
+        if event.num == 5 or event.delta < 0:
+            self.canvas.yview_scroll(1, "units")
+        elif event.num == 4 or event.delta > 0:
+            self.canvas.yview_scroll(-1, "units")
+        
+        # Evitar propagación del evento
+        return "break"
 
     def add_section(self, parent, title, is_money=False, prefix=""):
         """Añade una sección para seleccionar una columna"""
@@ -452,7 +483,7 @@ class ComentariosFrame(tk.LabelFrame):
             messagebox.showinfo("Información", "Primero selecciona una columna para reemplazar")
             return
 
-        dialog = WordReplacementDialog(self, self.parent.df, columna)
+        dialog = WordReplacementDialog(self, self.df, columna)
         self.wait_window(dialog)
 
         replacements = dialog.get_replacements()
@@ -466,7 +497,7 @@ class ComentariosFrame(tk.LabelFrame):
 
     def previsualizar_comentarios(self):
         """Muestra una previsualización de cómo quedarían los comentarios"""
-        if not hasattr(self.parent, 'df') or self.parent.df is None:
+        if self.df is None:
             messagebox.showerror("Error", "No hay datos cargados")
             return
 
@@ -495,7 +526,7 @@ class ComentariosFrame(tk.LabelFrame):
     def generar_comentarios_muestra(self, num_rows=5):
         """Genera una muestra de comentarios para previsualización"""
         # Crear copia del DataFrame para trabajar (solo las primeras filas)
-        df_muestra = self.parent.df.head(num_rows).copy()
+        df_muestra = self.df.head(num_rows).copy()
 
         # Obtener orden de columnas
         order_items = self.order_listbox.get(0, tk.END)
@@ -573,7 +604,7 @@ class ComentariosFrame(tk.LabelFrame):
 
     def generar_comentarios(self):
         """Genera la columna COMENTARIOS según la configuración"""
-        if not hasattr(self.parent, 'df') or self.parent.df is None:
+        if self.df is None:
             messagebox.showerror("Error", "No hay datos cargados")
             return
 
@@ -593,7 +624,7 @@ class ComentariosFrame(tk.LabelFrame):
 
             # Crear copia del DataFrame para trabajar
             logger.info("Creando copia del DataFrame original para añadir comentarios")
-            df_trabajo = self.parent.df.copy()
+            df_trabajo = self.df.copy()
 
             # Inicializar columna COMENTARIOS
             df_trabajo["COMENTARIOS"] = ""
@@ -681,8 +712,8 @@ class ComentariosFrame(tk.LabelFrame):
                 logger.info(f"  Fila {i+1}: {ejemplo}")
 
             # Guardar en la instancia principal
-            self.parent.df_comentarios = df_trabajo
-            self.parent.comentarios_generados = True
+            self.app.df_comentarios = df_trabajo
+            self.app.comentarios_generados = True
             logger.info("DataFrame con comentarios guardado en memoria y listo para fusión")
 
             # Mostrar mensaje de éxito
@@ -816,8 +847,8 @@ class ComentariosFrame(tk.LabelFrame):
 
     def update_column_lists(self):
         """Actualiza las listas de columnas disponibles"""
-        if hasattr(self.parent, 'df') and self.parent.df is not None:
-            columns = self.parent.df.columns.tolist()
+        if self.df is not None:
+            columns = self.df.columns.tolist()
 
             # Actualizar cada sección
             for section in self.sections:
@@ -827,6 +858,8 @@ class ComentariosFrame(tk.LabelFrame):
             self.replace_combo["values"] = columns
 
             logger.info(f"Listas de columnas actualizadas en el generador de comentarios: {len(columns)} columnas")
+        else:
+            logger.warning("No hay DataFrame disponible para actualizar las columnas en comentarios")
 
 class FechasFrame(tk.Frame):
     """Frame para formatear fechas de nacimiento"""
@@ -1346,6 +1379,10 @@ class App(tk.Tk):
         # Contenido de pestaña 2 (Fechas)
         self.fechas_frame = FechasFrame(self.tab_fechas)
         self.fechas_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Contenido de pestaña 3 (Comentarios)
+        # Inicialmente vacía, se llenará al cargar un archivo
+        self.comentarios_frame = None
 
         # Área de log (común para todas las pestañas)
         log_frame = tk.LabelFrame(self, text="Log")
@@ -1503,7 +1540,7 @@ class App(tk.Tk):
             widget.destroy()
 
         # Crear frame de comentarios
-        self.comentarios_frame = ComentariosFrame(self, self.df)
+        self.comentarios_frame = ComentariosFrame(self.tab_comentarios, self.df)
         self.comentarios_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     def move_to_selected(self):
