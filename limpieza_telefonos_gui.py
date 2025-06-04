@@ -579,7 +579,9 @@ class ComentariosFrame(tk.LabelFrame):
                         # Aplicar reemplazos si existen
                         if col_name in self.reemplazos_columnas:
                             for original, nuevo in self.reemplazos_columnas[col_name].items():
-                                valor_proc = valor_proc.replace(original, nuevo)
+                                # Usar expresiones regulares para reemplazar palabras completas
+                                patron = r'\b' + re.escape(original) + r'\b'
+                                valor_proc = re.sub(patron, nuevo, valor_proc)
 
                 # Caso especial: reemplazar 0 por 1 en límite diferido
                 for section in self.sections:
@@ -682,7 +684,9 @@ class ComentariosFrame(tk.LabelFrame):
                             # Aplicar reemplazos si existen
                             if col_name in self.reemplazos_columnas:
                                 for original, nuevo in self.reemplazos_columnas[col_name].items():
-                                    valor_proc = valor_proc.replace(original, nuevo)
+                                    # Usar expresiones regulares para reemplazar palabras completas
+                                    patron = r'\b' + re.escape(original) + r'\b'
+                                    valor_proc = re.sub(patron, nuevo, valor_proc)
 
                     # Caso especial: reemplazar 0 por 1 en límite diferido
                     for section in self.sections:
