@@ -1,0 +1,93 @@
+@startuml LimpiadorDeDatos
+
+' Configuración del tema
+!theme plain
+skinparam backgroundColor white
+skinparam roundcorner 20
+skinparam shadowing false
+
+' Estilos personalizados
+skinparam class {
+    BackgroundColor white
+    ArrowColor #2688d4
+    BorderColor #2688d4
+    FontSize 14
+    AttributeFontSize 12
+    FontColor black
+}
+
+' Clase principal
+class App {
+    -- Atributos --
+    - df: DataFrame
+    - df_comentarios: DataFrame
+    - df_limpio: DataFrame
+    - columnas_limpias: List
+    - cedula_col: str
+    
+    -- Métodos principales --
+    + inicializar_variables()
+    + load_file()
+    + ejecutar_limpieza()
+    + procesar_limpieza()
+}
+
+' Frames
+class FechasFrame {
+    -- Atributos --
+    - columnas_disponibles: List
+    - fecha_combo: Combobox
+    
+    -- Métodos --
+    + update_column_list()
+    + previsualizar_formato()
+    + aplicar_formato()
+}
+
+class ComentariosFrame {
+    -- Atributos --
+    - reemplazos_columnas: Dict
+    - sections: List
+    
+    -- Métodos --
+    + generar_comentarios()
+    + previsualizar_comentarios()
+    + fusionar_con_base_original()
+}
+
+' Componentes auxiliares
+class ColumnSelector {
+    -- Atributos --
+    - title: str
+    - listbox: Listbox
+    
+    -- Métodos --
+    + get_selection()
+    + populate()
+    + move_up()
+    + move_down()
+}
+
+class WordReplacementDialog {
+    -- Atributos --
+    - reemplazos: Dict
+    
+    -- Métodos --
+    + add_replacement_row()
+    + get_replacements()
+}
+
+' Relaciones
+App *--> FechasFrame : contiene
+App *--> ComentariosFrame : contiene
+App *--> ColumnSelector : contiene
+ComentariosFrame *--> WordReplacementDialog : usa
+
+' Herencia
+App --|> "tk.Tk"
+FechasFrame --|> "tk.Frame"
+ComentariosFrame --|> "tk.LabelFrame"
+ColumnSelector --|> "tk.Frame"
+WordReplacementDialog --|> "tk.Toplevel"
+
+@enduml 
