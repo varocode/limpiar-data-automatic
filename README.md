@@ -1,63 +1,64 @@
-# Limpiador de Datos Automático
+<div align="center">
+  <h1>🧹 Limpieza de Datos Automática</h1>
+  <p>Herramienta Python con interfaz gráfica para limpiar y normalizar datos de teléfonos y fechas</p>
 
-Esta aplicación de escritorio está diseñada para automatizar el proceso de limpieza y formateo de datos en archivos Excel, con un enfoque especial en:
+  ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+  ![Tkinter](https://img.shields.io/badge/Tkinter-GUI-orange?style=for-the-badge&logo=python&logoColor=white)
+  ![Pandas](https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
+</div>
 
-- Limpieza y normalización de números telefónicos dominicanos
-- Formateo de fechas
-- Generación de columnas de comentarios
+---
 
-## Características Principales
+## 📌 Descripción
 
-### 1. Limpieza de Teléfonos
-- Normalización de números telefónicos
-- Eliminación de duplicados
-- Validación de prefijos dominicanos (809, 829, 849)
-- Relleno automático de celdas vacías
+Suite de scripts Python para automatizar la limpieza y normalización de datos. Incluye herramientas con interfaz gráfica (GUI) para procesar archivos con números de teléfono y fechas en formatos incorrectos o inconsistentes.
 
-### 2. Formateo de Fechas
-- Conversión automática a formato dd/mm/yyyy
-- Soporte para múltiples formatos de entrada
-- Previsualización antes de aplicar cambios
-- Respaldo automático de datos originales
+## ✨ Features
 
-### 3. Generador de Comentarios
-- Concatenación personalizable de columnas
-- Soporte para montos en RD$ y US$
-- Reemplazo de palabras configurable
-- Previsualización de resultados
+- 📱 Limpieza y normalización de números de teléfono
+- 📅 Corrección de formatos de fechas problemáticas
+- 🖥️ Interfaz gráfica (GUI) con Tkinter — sin necesidad de usar la terminal
+- 📂 Procesamiento de archivos en lote
+- 🔄 Múltiples versiones mejoradas progresivamente
 
-## Requisitos
-- Python 3.x
-- pandas
-- tkinter
-- numpy
+## 📁 Scripts incluidos
 
-## Instalación
-1. Clonar el repositorio
+| Archivo | Descripción |
+|---------|-------------|
+| `limpieza_telefonos_gui.py` | Limpiador de teléfonos con GUI v1 |
+| `limpieza_telefonos_gui-v2.py` | Versión mejorada con más opciones |
+| `limpieza_telefonos_gui-v3.py` | Versión final optimizada |
+| `limpieza_mejorada.py` | Limpieza general de datos |
+| `limpieza_fechas_nuevo.py` | Corrección de fechas |
+| `solucion_fechas.py` | Solución para fechas problemáticas |
+
+## ⚙️ Instalación y uso
+
+### Requisitos
 ```bash
-git clone https://github.com/varocode/limpiar-data-automatic.git
+pip install -r requirements.txt
 ```
 
-2. Instalar dependencias
+### Ejecutar la GUI de teléfonos
 ```bash
-pip install pandas numpy
+python limpieza_telefonos_gui-v3.py
 ```
 
-## Uso
-1. Ejecutar el archivo principal:
+### Ejecutar limpieza de fechas
 ```bash
-python limpieza_telefonos_gui.py
+python limpieza_fechas_nuevo.py
 ```
 
-2. Seleccionar el archivo Excel a procesar
-3. Elegir las columnas a limpiar/formatear
-4. Seguir las instrucciones en pantalla
+## 🖥️ Interfaz
 
-## Características Adicionales
-- Interfaz gráfica intuitiva
-- Logs detallados del proceso
-- Respaldo automático de datos originales
-- Fusión opcional con base de datos original
+La herramienta incluye una interfaz gráfica que permite:
+- Seleccionar el archivo a procesar
+- Elegir el tipo de limpieza
+- Visualizar los cambios antes de guardar
+- Exportar el resultado limpio
 
-## Contribuir
-Las contribuciones son bienvenidas. Por favor, abre un issue para discutir los cambios propuestos. 
+---
+
+<div align="center">
+  Desarrollado por <a href="https://github.com/varocode">varocode</a>
+</div>
